@@ -2,9 +2,10 @@
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
 
 <?php
-  require('db_connect.php');
-
   if(isset($_POST['create'])) {
+
+    require('db_connect.php');
+
     $password = crypt($_POST['password']);
     $sql = "
       CREATE TABLE IF NOT EXISTS users
@@ -21,17 +22,20 @@
     ";
 
     if ($conn->multi_query($sql) != FALSE) {
-      header("Location:timetable.php"); 
+      $_POST['login'] = "";
     }
     else {
       echo($conn->error);
     }
   }
   if(isset($_POST['login'])) {
+
+    require('db_connect.php');
+
     $sql = "
       SELECT * FROM `timetable`.`users` WHERE email='{$_POST['email']}';
     ";
-
+    
     $result = $conn->query($sql);
 
     if ( $result->num_rows > 0 ) {
@@ -39,7 +43,7 @@
 
       if (crypt($_POST['password'], $password) === $password) {
         $_SESSION['user_id'] = $id;
-        $_SESSION['user_name'] = $id;
+        $_SESSION['user_name'] = $name;
         $_SESSION['user_email'] = $email;
         $_SESSION['user_password'] = $password;
         $_SESSION['user_level'] = $level;
