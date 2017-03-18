@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS `timetable`.`rooms`
+(
+	id INT NOT NULL AUTO_INCREMENT,
+	NAME VARCHAR(255) NOT NULL,
+	num_students INT NOT NULL,
+	has_pc VARCHAR(255) NOT NULL,
+	has_projector VARCHAR(255) NOT NULL,
+	PRIMARY KEY (ID)
+);

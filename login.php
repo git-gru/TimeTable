@@ -8,7 +8,7 @@
 
     $password = crypt($_POST['password']);
     $sql = "
-      CREATE TABLE IF NOT EXISTS users
+      CREATE TABLE IF NOT EXISTS `timetable`.`users`
       (
         id int NOT NULL AUTO_INCREMENT,
         name varchar(255) NOT NULL,
