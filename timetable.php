@@ -35,6 +35,63 @@
 </nav>
 
 <?php
+	if (isset($_POST['submit'])) {
+
+		require('db_connect.php');
+		require('room.class.php');
+
+		$arr_times = array("8:00 AM", "9:00 AM", "10:00 AM", "11:00 AM", "1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM");
+		$from = $_POST['from'];
+		$to = $_POST['to'];
+
+		while ($arr_times[0] != $from) {
+			array_shift($arr_times)."<br>";
+		}
+
+		$arr_times = array_slice($arr_times, 0, array_search($to, $arr_times)+1);
+
+		$sql = "
+			SELECT * FROM `timetable`.`rooms` WHERE num_students >= '{$_POST['num_students']}' AND has_pc = '{$_POST['has_pc']}' AND has_projector = '{$_POST['has_projector']}';
+		";
+		$result = $conn->query($sql);
+
+		$arr_rooms = array();
+
+		if ( $result->num_rows > 0 ) {
+			while (list($id, $name, $num_students, $has_pc, $has_projector) = mysqli_fetch_array($result)) {
+				$room = new Room($id, $name, $num_students, $has_pc, $has_projector);
+				array_push($arr_rooms, $room);
+			}
+		}
+
+		foreach ($arr_times as $time) {
+			foreach ($arr_rooms as $room) {
+				$room_id = $room->id;
+				$weekday = $_POST['weekday'];
+				$sql = "SELECT count(*) as count FROM `timetable`.`reservation` WHERE `room_id`='$room_id' AND `weekday`='$weekday' AND `time`='$time'";
+				$result = $conn->query($sql);
+				list($count) = mysqli_fetch_array($result);
+				if ($count == 0) {
+					$register[$time] = $room_id;
+					break;
+				}
+			}
+		}
+                
+                foreach ($register as $time => $room_id) {
+
+                        $sql = "
+				INSERT INTO `timetable`.`reservation` (`user_id`, `room_id`, `weekday`, `time`) VALUES ('{$_SESSION['user_id']}', '$room_id', '{$_POST['weekday']}', '$time');
+			";
+			
+			if ($conn->query($sql) == FALSE) {
+				echo($conn->error);
+			}
+                }
+	}
+?>
+
+<?php
 	require('db_connect.php');
 
 	$sql = "SELECT `timetable`.`reservation`.`user_id`, `timetable`.`reservation`.`room_id`, `timetable`.`rooms`.`name`, `timetable`.`rooms`.`num_students`, `timetable`.`rooms`.`has_pc`, `timetable`.`rooms`.`has_projector`, `timetable`.`reservation`.`weekday`, `timetable`.`reservation`.`time` FROM `timetable`.`reservation` LEFT JOIN `timetable`.`rooms` ON `timetable`.`rooms`.`id`=`timetable`.`reservation`.`room_id` WHERE `timetable`.`reservation`.`user_id`='{$_SESSION['user_id']}';
@@ -192,9 +249,40 @@
 </table>
 
 <form action="timetable.php" method="post">
-	Students:<input type="text" name="num_students" placeholder="name" /><br>
+	Room Size(Number of Students):<br><input type="text" name="num_students" placeholder="name" /><br>
 	Has PC:<label for="has_pc">N <input type="radio" name="has_pc" value="N" /></label>  <label for="has_pc">Y <input type="radio" name="has_pc" value="Y" checked="checked" /></label><br>
 	Has Projector:<label for="has_projector">N <input type="radio" name="has_projector" value="N" /></label>  <label for="has_projector">Y <input type="radio" name="has_projector" value="Y" checked="checked" /></label><br>
+	WeekDay:
+	<select name="weekday">
+		<option value="Monday">Monday</option>
+		<option value="Tuesday">Tuesday</option>
+		<option value="Wednesday">Wednesday</option>
+		<option value="Thursday">Thursday</option>
+		<option value="Friday">Friday</option>
+	</select>
+	Duration:<br>
+	From:
+	<select name="from">
+		<option value="8:00 AM">8:00 AM</option>
+		<option value="9:00 AM">9:00 AM</option>
+		<option value="10:00 AM">10:00 AM</option>
+		<option value="11:00 AM">11:00 AM</option>
+		<option value="1:00 PM">1:00 PM</option>
+		<option value="2:00 PM">2:00 PM</option>
+		<option value="3:00 PM">3:00 PM</option>
+	</select>
+	<br>
+	To:
+	<select name="to">
+		<option value="9:00 AM">9:00 AM</option>
+		<option value="10:00 AM">10:00 AM</option>
+		<option value="11:00 AM">11:00 AM</option>
+		<option value="1:00 PM">1:00 PM</option>
+		<option value="2:00 PM">2:00 PM</option>
+		<option value="3:00 PM">3:00 PM</option>
+		<option value="4:00 PM">4:00 PM</option>
+	</select>
+	<br>
 	<input type="submit" name="submit" value="submit" />
 </form>
 
@@ -294,8 +382,8 @@
 
     $(document).on("click","#room_reservation_submit", function(e){
 
-    	var weekday = $('input[name=group1]:checked').next('label').text();
-    	var time = $('input[name=group2]:checked').next('label').text();
+		var weekday = $('input[name=group1]:checked').next('label').text();
+		var time = $('input[name=group2]:checked').next('label').text();
 
 		var data = new FormData();
 		data.append('user_id', "<?php echo($_SESSION['user_id']); ?>");
@@ -321,32 +409,3 @@
 		});
 	});
 </script>
-
-<?php
-	if (isset($_POST['submit'])) {
-		require('db_connect.php');
-		$sql = "
-			SELECT * FROM `timetable`.`rooms` WHERE num_students >= '{$_POST['num_students']}' AND has_pc = '{$_POST['has_pc']}' AND has_projector = '{$_POST['has_projector']}';
-		";
-		$result = $conn->query($sql);
-
-		if ( $result->num_rows > 0 ) {
-			echo "<table>
-					<tr>
-						<th>Room Name</th>
-						<th>Students</th>
-						<th>Has PC</th>
-						<th>Has Projector</th>
-					</tr>";
-			while (list($id, $name, $num_students, $has_pc, $has_projector) = mysqli_fetch_array($result)) {
-				echo '<tr id="'.$id.'" class = "room">
-						<td>'.$name."</td>
-						<td>$num_students</td>
-						<td>$has_pc</td>
-						<td>$has_projector</td>
-					</tr>";
-			}
-			echo "</table>";
-		}
-	}
-?>
